@@ -12,7 +12,6 @@ var socket = new net.Socket();
 
 const send = (data: any) =>
 {
-    console.log(data);
     socket.write(`${JSON.stringify(data)}\n`);
 };
 
@@ -83,7 +82,7 @@ socket.connect({ port: parseInt(HYPERION_PORT), host: HYPERION_HOST }, () =>
         "subscribe": [
             "components-update"
         ],
-        "tan": 1
+        "tan": INSTANCE
     });
 });
 

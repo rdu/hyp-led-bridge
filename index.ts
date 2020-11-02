@@ -1,13 +1,9 @@
 import * as net from 'net';
 import * as mqtt from 'mqtt';
+import { CONFIG as config } from './config';
+import { profile } from 'console';
 
-const INSTANCE = process.env.INSTANCE || 1;
-const MQTT_TOPIC = process.env.MQTT_TOPIC || 'hyperion_wledschrank';
-const MQTT_SERVER = process.env.MQTT_SERVER || 'mqtt.moerse';
-const HYPERION_PORT = process.env.HYPERION_PORT || '19444';
-const HYPERION_HOST = process.env.HYPERION_HOST || '10.10.0.124';
-
-var mqttClient = mqtt.connect(`mqtt://${MQTT_SERVER}`);
+var mqttClient = mqtt.connect(`mqtt://${config.MQTT_SERVER}`);
 var socket = new net.Socket();
 
 const send = (data: any) =>
@@ -15,15 +11,13 @@ const send = (data: any) =>
     socket.write(`${JSON.stringify(data)}\n`);
 };
 
-const handleMQTTMessage = (json) =>
+const handleMQTTMessage = (json, profile: { instance: number, topic: string }) =>
 {
     const state = (json && json.state);
     send({
-        command: 'componentstate',
-        componentstate: {
-            component: 'LEDDEVICE',
-            state
-        }
+        command: "instance",
+        subcommand: state ? 'startInstance' : 'stopInstance',
+        instance: profile.instance
     });
 }
 
@@ -32,7 +26,17 @@ mqttClient.on('message', (topic, message) =>
     try
     {
         const json = JSON.parse(message.toString());
-        handleMQTTMessage(json);
+        const mtop = topic.substr(0, topic.length - 4);
+        const ff = Object.keys(config.profiles).filter((a) =>
+        {
+            const p = config.profiles[a];
+            return p.topic === mtop;
+        });
+        if (ff && ff.length > 0)
+        {
+            const profile = config.profiles[ff[0]];
+            handleMQTTMessage(json, profile);
+        }
     }
     catch (e)
     {
@@ -40,18 +44,22 @@ mqttClient.on('message', (topic, message) =>
     }
 });
 
-mqttClient.subscribe(`${MQTT_TOPIC}/set`, (err) =>
+Object.keys(config.profiles).forEach((key) =>
 {
-    if (err)
+    const profile = config.profiles[key];
+    mqttClient.subscribe(`${profile.topic}/set`, (err) =>
     {
-        console.log(err);
-        process.exit();
-    }
+        if (err)
+        {
+            console.log(err);
+            process.exit();
+        }
+    });
 });
 
-const post = (en) =>
+const post = (profile: { instance: number, topic: string }, en: boolean) =>
 {
-    mqttClient.publish(`${MQTT_TOPIC}`, JSON.stringify({ state: en }));
+    mqttClient.publish(`${profile.topic}`, JSON.stringify({ state: en }));
 }
 
 const handleData = (data: string) =>
@@ -59,8 +67,13 @@ const handleData = (data: string) =>
     try
     {
         const json = JSON.parse(data);
-        if (json.data && json.data.name === 'LEDDEVICE')
-            post(json.data.enabled);
+        if (json.command === 'instance-update' && json.data)
+        {
+            json.data.forEach((a) =>
+            {
+                post(config.profiles[a.instance], a.running);
+            });
+        }
     }
     catch (e)
     {
@@ -68,21 +81,19 @@ const handleData = (data: string) =>
     }
 }
 
-socket.connect({ port: parseInt(HYPERION_PORT), host: HYPERION_HOST }, () =>
+socket.connect({ port: config.HYPERION_PORT, host: config.HYPERION_HOST }, () =>
 {
     console.log('connected');
-    send({
-        "command": "instance",
-        "subcommand": "switchTo",
-        "instance": INSTANCE
-    })
-
+    // send({
+    //     "command": "instance",
+    //     "subcommand": "switchTo",
+    //     "instance": INSTANCE
+    // })
     send({
         "command": "serverinfo",
         "subscribe": [
-            "components-update"
+            "instance-update"
         ],
-        "tan": INSTANCE
     });
 });
 

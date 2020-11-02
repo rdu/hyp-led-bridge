@@ -1,4 +1,4 @@
-FROM node:10.9.0-alpine
+FROM node:12.4.0-alpine
 
 RUN npm install ts-node -g
 

@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
 
+env:
+  PROJECT_ID: hyp-led-bridge
+  IMAGE: service
+
 jobs:
   build:
     runs-on: ubuntu-latest

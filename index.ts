@@ -11,7 +11,7 @@ const send = (data: any) =>
     socket.write(`${JSON.stringify(data)}\n`);
 };
 
-const handleMQTTMessage = (json, profile: { instance: number, topic: string }) =>
+const handleMQTTMessage = (json: any, profile: { instance: number, topic: string }) =>
 {
     const state = (json && json.state);
     send({
@@ -29,12 +29,12 @@ mqttClient.on('message', (topic, message) =>
         const mtop = topic.substr(0, topic.length - 4);
         const ff = Object.keys(config.profiles).filter((a) =>
         {
-            const p = config.profiles[a];
+            const p = (config as any).profiles[a];
             return p.topic === mtop;
         });
         if (ff && ff.length > 0)
         {
-            const profile = config.profiles[ff[0]];
+            const profile = (config as any).profiles[ff[0]];
             handleMQTTMessage(json, profile);
         }
     }
@@ -46,7 +46,7 @@ mqttClient.on('message', (topic, message) =>
 
 Object.keys(config.profiles).forEach((key) =>
 {
-    const profile = config.profiles[key];
+    const profile = (config as any).profiles[key];
     mqttClient.subscribe(`${profile.topic}/set`, (err) =>
     {
         if (err)
@@ -69,9 +69,9 @@ const handleData = (data: string) =>
         const json = JSON.parse(data);
         if (json.command === 'instance-update' && json.data)
         {
-            json.data.forEach((a) =>
+            json.data.forEach((a: any) =>
             {
-                post(config.profiles[a.instance], a.running);
+                post((config as any).profiles[a.instance], a.running);
             });
         }
     }

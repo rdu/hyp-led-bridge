@@ -1,5 +1,5 @@
 export const CONFIG = {
-    MQTT_SERVER: 'mqtt.moerse',
+    MQTT_SERVER: 'mqtt.dudeck.info',
     HYPERION_PORT: 19444,
     HYPERION_HOST: '10.69.0.152',
     profiles: {
